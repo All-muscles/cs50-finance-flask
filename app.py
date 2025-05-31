@@ -42,8 +42,43 @@ def index():
 @login_required
 def buy():
     """Buy shares of stock"""
-    return apology("TODO")
+    if request.method == "POST":
+        symbol = request.form.get("symbol")
+        if not symbol:
+            return apology("Must provide symbol")
+        
+        results = lookup(symbol)
+        if not results:
+            return apology("Symbol must exist")
+        
+        shares = request.form.get("shares")
+        if not shares:
+            return apology("Must provide shares")
+        
+        if not shares.isdigit() or int(shares) == 0:
+            return apology("The share value must be a positive whole number")
+        
+        shares = int(shares)
 
+        name = results["name"]
+        price = int(results["price"])
+        symbol = results["symbol"] # this is basically redundent i think
+
+        user_budget = db.execute(
+            "SELECT cash from users where id = ?", session["user_id"]
+        )
+
+        user_budget = int(user_budget[0]["cash"])
+
+        if (price * shares) > user_budget:
+            return apology("Low on cash in your account, could not complete purchase")
+        else:
+            # complete the purchase
+            ...
+
+        redirect("/")
+    else:
+        return render_template("buy.html")
 
 @app.route("/history")
 @login_required
