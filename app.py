@@ -132,6 +132,8 @@ def register():
             db.execute(
                 "INSERT INTO users (username, hash) VALUES (?, ?)", username, generate_password_hash(password)
             )
+
+            return redirect("/")
         except ValueError:
             return apology("Username already in the database", 400)
 
