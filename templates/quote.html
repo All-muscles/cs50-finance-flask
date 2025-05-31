@@ -1,0 +1,35 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Quote
+{% endblock %}
+
+{% block main %}
+    <form action="/quote" method="post">
+        <div class="mb-3" >
+            <input type="text" name="symbol" autocomplete="off" autofocus placeholder="Symbol">
+        </div>
+        <button class="btn btn-primary" type="submit">Search</button>
+    </form>
+
+    {% if quote %}
+        Here is the quote
+        <!-- {{ quote }} -->
+        <table class="table">
+            <thead>
+                <th>Name</th>
+                <th>Price</th>
+                <th>Symbol</th>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>{{ quote.name }}</td>
+                    <td>{{ quote.price }}</td>
+                    <td>{{ quote.symbol }}</td>
+                </tr>
+            </tbody>
+        </table>
+    {% else %}
+        Search for a symbol to get its quote
+    {% endif %}
+{% endblock %}
