@@ -4,6 +4,7 @@ from cs50 import SQL
 from flask import Flask, flash, redirect, render_template, request, session
 from flask_session import Session
 from werkzeug.security import check_password_hash, generate_password_hash
+from datetime import datetime
 
 from helpers import apology, login_required, lookup, usd
 
@@ -65,18 +66,31 @@ def buy():
         symbol = results["symbol"] # this is basically redundent i think
 
         user_budget = db.execute(
-            "SELECT cash from users where id = ?", session["user_id"]
+            "SELECT cash FROM users WHERE id = ?", session["user_id"]
         )
 
         user_budget = int(user_budget[0]["cash"])
+        cost = price * shares
 
-        if (price * shares) > user_budget:
+        if (cost) > user_budget:
             return apology("Low on cash in your account, could not complete purchase")
         else:
             # complete the purchase
-            ...
+            # purchases (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, uuid INTEGER NOT NULL, price_cents INTEGER NOT NULL, shares INTEGER NOT NULL, time DATETIME NOT NULL)
+            
+            # update the users cash in their account
+            db.execute(
+                "UPDATE users SET cash = ? WHERE id = ?", (user_budget - cost), session["user_id"]
+            )
 
-        redirect("/")
+            # add their purchase into the purchases table
+            db.execute(
+                "INSERT INTO purchases (uuid, price_cents, shares, time) VALUES (?, ?, ?, ?)", session["user_id"], price * 100, shares, datetime.now()
+
+                # TODO: cs50 starts off by saving peoples cash in dollars which is just the wrong way for it, now this is also wrong because the price that the api returns is something like 21.50 and i am just converting that into an int here, but this is just an acknowledgement that i know this is totally wrong
+            )
+
+        return redirect("/")
     else:
         return render_template("buy.html")
 
