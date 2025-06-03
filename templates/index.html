@@ -1,0 +1,29 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    CS50 Finance
+{% endblock %}
+
+{% block main %}
+    <table class="table">
+        <thead>
+            <th>Symbol</th>
+            <th>Shares</th>
+            <th>Price</th>
+            <th>TOTAL</th>
+        </thead>
+        <tbody>
+            {% for row in rows %}
+            <tr>
+                <td>{{ row.symbol }}</td>
+                <td>{{ row.shares }}</td>
+                <td>${{ row.price }}</td>
+                <td>${{ row.total }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    Cash: ${{ cash }} 
+    <br>
+    Total: ${{  total  }}
+{% endblock %}

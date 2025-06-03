@@ -36,8 +36,46 @@ def after_request(response):
 @login_required
 def index():
     """Show portfolio of stocks"""
-    return apology("TODO")
+    # stocks they own, number of each stock's shares, current price of each stock, total value of each holding, current cash balance, total networth
 
+    id = session["user_id"]
+
+    rows = db.execute(
+        "SELECT price_cents, shares, symbol FROM purchases WHERE uuid = ?", id
+    )
+
+    current_prices = {} # keep track of each share and its price
+    total_shares = {} # keep track of how many shares someone owns in total of each stock
+    for row in rows:
+        symbol = row["symbol"]
+        share_count = row["shares"]
+
+        # make sure the symbol has not been looked up yet
+        if symbol not in current_prices:
+            price = lookup(symbol)["price"] * 100
+            current_prices[symbol] = price
+
+        if symbol in total_shares:
+            total_shares[symbol] = share_count + total_shares[symbol]
+        else:
+            total_shares[symbol] = share_count
+
+    # make a list of dict with each dict containing symbol, shares, price and a total
+    rows = []
+    total = 0
+    for symbol, shares in total_shares.items():
+        row = {}
+        row["symbol"] = symbol
+        row["shares"] = shares
+        row["price"] = current_prices[symbol] / 100
+        row["total"] = round((shares * current_prices[symbol]) / 100, 2)
+        total += shares * current_prices[symbol]
+        rows.append(row)
+
+    cash_cents = db.execute("SELECT balance_cents FROM users WHERE id = ?", id)[0]["balance_cents"]
+    total += cash_cents
+
+    return render_template("index.html", rows=rows, cash=cash_cents / 100, total=total / 100)
 
 @app.route("/buy", methods=["GET", "POST"])
 @login_required
@@ -62,32 +100,27 @@ def buy():
         shares = int(shares)
 
         name = results["name"]
-        price = int(results["price"])
+        price = results["price"]
         symbol = results["symbol"] # this is basically redundent i think
 
-        user_budget = db.execute(
-            "SELECT cash FROM users WHERE id = ?", session["user_id"]
+        row = db.execute(
+            "SELECT balance_cents FROM users WHERE id = ?", session["user_id"]
         )
 
-        user_budget = int(user_budget[0]["cash"])
-        cost = price * shares
+        user_budget = row[0]["balance_cents"]
+        cost = (price * 100) * shares
 
         if (cost) > user_budget:
             return apology("Low on cash in your account, could not complete purchase")
-        else:
-            # complete the purchase
-            # purchases (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, uuid INTEGER NOT NULL, price_cents INTEGER NOT NULL, shares INTEGER NOT NULL, time DATETIME NOT NULL)
-            
+        else:          
             # update the users cash in their account
             db.execute(
-                "UPDATE users SET cash = ? WHERE id = ?", (user_budget - cost), session["user_id"]
+                "UPDATE users SET balance_cents = ? WHERE id = ?", (user_budget - cost), session["user_id"]
             )
 
             # add their purchase into the purchases table
             db.execute(
-                "INSERT INTO purchases (uuid, price_cents, shares, time) VALUES (?, ?, ?, ?)", session["user_id"], price * 100, shares, datetime.now()
-
-                # TODO: cs50 starts off by saving peoples cash in dollars which is just the wrong way for it, now this is also wrong because the price that the api returns is something like 21.50 and i am just converting that into an int here, but this is just an acknowledgement that i know this is totally wrong
+                "INSERT INTO purchases (uuid, price_cents, shares, symbol, time) VALUES (?, ?, ?, ?, ?)", session["user_id"], price * 100, shares, symbol, datetime.now()
             )
 
         return redirect("/")
