@@ -234,7 +234,44 @@ def register():
 @login_required
 def sell():
     """Sell shares of stock"""
-    return apology("TODO")
+    if request.method == "POST":
+        uuid = session["user_id"]
+        symbol = request.form.get("symbol")
+        shares = int(request.form.get("shares"))
+        current_price = int(lookup(symbol)["price"] * 100)
+
+        # check if the user has such shares and symbols as they claim to have
+        # check each of the purchases and sells table and then verify if they have that much share of the symbol they have entered
+        purchased_shares = db.execute("SELECT SUM(shares) FROM purchases WHERE uuid = ? AND symbol = ?", uuid, symbol)[0]["SUM(shares)"]
+        sold_shares = db.execute("SELECT SUM(shares) from sells WHERE uuid = ? AND symbol = ?", uuid, symbol)[0]["SUM(shares)"]
+        if sold_shares is None:
+            sold_shares = 0
+        if sold_shares >= purchased_shares:
+            apology(f"You do not have enough shares to sell of the symbol {symbol}")
+        else:
+            db.execute("INSERT INTO sells (uuid, price_cents, shares, symbol, time) VALUES (?, ?, ?, ?, ?)", uuid, current_price, shares, symbol, datetime.now())
+
+            # update users cash balance
+            user_balance = int(db.execute("SELECT balance_cents FROM users WHERE id = ?", uuid)[0]["balance_cents"])
+            print(f"user balance: {user_balance}", f"new balance: {user_balance + (current_price * shares)}")
+            db.execute("UPDATE users SET balance_cents = ? WHERE id = ?", user_balance + (current_price * shares), uuid)
+
+            return redirect("/")
+
+    else:
+        id = session["user_id"]
+
+        rows = db.execute("SELECT symbol FROM purchases WHERE uuid = ?", id)
+
+        symbols = []
+        for row in rows:
+            symbol = row["symbol"]
+            if symbol in symbols:
+                pass
+            else:
+                symbols.append(symbol)
+        # import pdb; pdb.set_trace()
+        return render_template("sell.html", symbols=symbols)
 
 if __name__ == "__main__":
     app.debug = True
