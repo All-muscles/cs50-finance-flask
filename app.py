@@ -40,15 +40,19 @@ def index():
 
     id = session["user_id"]
 
-    rows = db.execute(
-        "SELECT price_cents, shares, symbol FROM purchases WHERE uuid = ?", id
+    rows_purchases = db.execute(
+        "SELECT shares, symbol FROM purchases WHERE uuid = ?", id
+    )
+
+    rows_sells = db.execute(
+        "SELECT shares, symbol FROM sells WHERE uuid = ?", id
     )
 
     current_prices = {} # keep track of each share and its price
     total_shares = {} # keep track of how many shares someone owns in total of each stock
-    for row in rows:
-        symbol = row["symbol"]
-        share_count = row["shares"]
+    for purchase in rows_purchases:
+        symbol = purchase["symbol"]
+        share_count = purchase["shares"]
 
         # make sure the symbol has not been looked up yet
         if symbol not in current_prices:
@@ -59,6 +63,15 @@ def index():
             total_shares[symbol] = share_count + total_shares[symbol]
         else:
             total_shares[symbol] = share_count
+
+    for sell in rows_sells:
+        symbol = sell["symbol"]
+        share_count = sell["shares"]
+
+        if symbol in total_shares:
+            total_shares[symbol] = total_shares[symbol] - share_count
+        else:
+            pass
 
     # make a list of dict with each dict containing symbol, shares, price and a total
     rows = []
