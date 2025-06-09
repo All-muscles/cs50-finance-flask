@@ -285,7 +285,7 @@ def sell():
         if sold_shares is None:
             sold_shares = 0
         if sold_shares >= purchased_shares:
-            apology(f"You do not have enough shares to sell of the symbol {symbol}")
+            return apology(f"You do not have enough shares to sell of the symbol {symbol}")
         else:
             db.execute("INSERT INTO sells (uuid, price_cents, shares, symbol, time) VALUES (?, ?, ?, ?, ?)", uuid, current_price, shares, symbol, datetime.now())
 
@@ -310,3 +310,29 @@ def sell():
                 symbols.append(symbol)
         # import pdb; pdb.set_trace()
         return render_template("sell.html", symbols=symbols)
+    
+@app.route("/topup", methods=["get", "post"])
+@login_required
+def topup():
+    """Top up users cash score"""
+    if request.method == "post":
+        amount = request.form.get("amount")
+        uuid = session["user_id"]
+
+        try:
+            amount = float(amount)
+        except:
+            return apology("Please try to enter a number like 1.22")
+        
+        # check if the floating points are two
+        decimals = len(str(amount).split(".")[1])
+        if decimals > 2:
+            return apology("Please try to enter a number like 1.22")
+
+        user_balance = db.execute("SELECT balance_cents FROM users WHERE uuid = ?", uuid)[0]["balance_cents"]
+
+        db.execute("UPDATE users SET balance_cents = ? WHERE uuid = ?", user_balance + amount * 100, uuid)
+
+        return redirect("/")
+    else:
+        return render_template("topup.html")
