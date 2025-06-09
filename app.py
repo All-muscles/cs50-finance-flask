@@ -90,6 +90,7 @@ def index():
 
     return render_template("index.html", rows=rows, cash=cash_cents / 100, total=total / 100)
 
+
 @app.route("/buy", methods=["GET", "POST"])
 @login_required
 def buy():
@@ -140,12 +141,34 @@ def buy():
     else:
         return render_template("buy.html")
 
+
 @app.route("/history")
 @login_required
 def history():
     """Show history of transactions"""
-    return apology("TODO")
+    uuid = session["user_id"]
+    purchases_rows = db.execute("SELECT price_cents, shares, symbol, time FROM purchases WHERE uuid = ?", uuid)
+    sells_rows = db.execute("SELECT price_cents, shares, symbol, time FROM purchases WHERE uuid = ?", uuid)
 
+    rows = []
+    for row in purchases_rows:
+        r = {}
+        r["price"] = row["price_cents"] / 100
+        r["shares"] = row["shares"]
+        r["symbol"] = row["symbol"]
+        r["time"] = row["time"]
+        r["status"] = "purchased"
+        rows.append(r)
+    for row in sells_rows:
+        r = {}
+        r["price"] = row["price_cents"] / 100
+        r["shares"] = row["shares"]
+        r["symbol"] = row["symbol"]
+        r["time"] = row["time"]
+        r["status"] = "sold"
+        rows.append(r)
+
+    return render_template("history.html", rows=rows)
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -211,6 +234,7 @@ def quote():
         return render_template("quote.html", quote=quote)
     else:
         return render_template("quote.html")
+    
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
@@ -242,6 +266,7 @@ def register():
 
     else:
         return render_template("register.html")
+    
 
 @app.route("/sell", methods=["GET", "POST"])
 @login_required
@@ -285,7 +310,3 @@ def sell():
                 symbols.append(symbol)
         # import pdb; pdb.set_trace()
         return render_template("sell.html", symbols=symbols)
-
-if __name__ == "__main__":
-    app.debug = True
-    app.run()
