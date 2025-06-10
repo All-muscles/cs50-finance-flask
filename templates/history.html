@@ -21,7 +21,7 @@
                 {% else %}
                     <td>-{{ row.shares }}</td>
                 {% endif %}
-                <td>${{ row.price }}</td>
+                <td>{{ row.price | usd}}</td>
                 <td>{{ row.time }}</td>
             </tr>
             {% endfor %}

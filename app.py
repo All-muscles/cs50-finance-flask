@@ -96,7 +96,7 @@ def index():
 def buy():
     """Buy shares of stock"""
     if request.method == "POST":
-        symbol = request.form.get("symbol")
+        symbol = request.form.get("symbol").upper()
         if not symbol:
             return apology("Must provide symbol")
         
@@ -115,11 +115,8 @@ def buy():
 
         name = results["name"]
         price = results["price"]
-        symbol = results["symbol"] # this is basically redundent i think
 
-        row = db.execute(
-            "SELECT balance_cents FROM users WHERE id = ?", session["user_id"]
-        )
+        row = db.execute("SELECT balance_cents FROM users WHERE id = ?", session["user_id"])
 
         user_budget = row[0]["balance_cents"]
         cost = (price * 100) * shares
@@ -128,14 +125,10 @@ def buy():
             return apology("Low on cash in your account, could not complete purchase")
         else:          
             # update the users cash in their account
-            db.execute(
-                "UPDATE users SET balance_cents = ? WHERE id = ?", (user_budget - cost), session["user_id"]
-            )
+            db.execute("UPDATE users SET balance_cents = ? WHERE id = ?", (user_budget - cost), session["user_id"])
 
             # add their purchase into the purchases table
-            db.execute(
-                "INSERT INTO purchases (uuid, price_cents, shares, symbol, time) VALUES (?, ?, ?, ?, ?)", session["user_id"], price * 100, shares, symbol, datetime.now()
-            )
+            db.execute("INSERT INTO purchases (uuid, price_cents, shares, symbol, time) VALUES (?, ?, ?, ?, ?)", session["user_id"], price * 100, shares, symbol, datetime.now())
 
         return redirect("/")
     else:
@@ -229,9 +222,14 @@ def quote():
         if not symbol:
             return apology("Must provide symbol")
         
-        quote = lookup(symbol)
+        r = lookup(symbol)
 
-        return render_template("quote.html", quote=quote)
+        if r is None:
+            return apology("Your symbol does not exist in the DB")
+
+        r["price"] = usd(r["price"])
+
+        return render_template("quote.html", quote=r)
     else:
         return render_template("quote.html")
     
@@ -284,8 +282,14 @@ def sell():
     if request.method == "POST":
         uuid = session["user_id"]
         symbol = request.form.get("symbol")
-        shares = int(request.form.get("shares"))
+        shares = request.form.get("shares")
         current_price = int(lookup(symbol)["price"] * 100)
+
+        # check if shares is a positive whole int
+        if not shares.isdigit() or int(shares) == 0:
+            return apology("Shares value must be a positive whole integer")
+
+        shares = int(shares)
 
         # check if the user has such shares and symbols as they claim to have
         # check each of the purchases and sells table and then verify if they have that much share of the symbol they have entered
@@ -293,14 +297,14 @@ def sell():
         sold_shares = db.execute("SELECT SUM(shares) from sells WHERE uuid = ? AND symbol = ?", uuid, symbol)[0]["SUM(shares)"]
         if sold_shares is None:
             sold_shares = 0
-        if sold_shares >= purchased_shares:
+        if shares >= (purchased_shares - sold_shares):
             return apology(f"You do not have enough shares to sell of the symbol {symbol}")
         else:
             db.execute("INSERT INTO sells (uuid, price_cents, shares, symbol, time) VALUES (?, ?, ?, ?, ?)", uuid, current_price, shares, symbol, datetime.now())
 
             # update users cash balance
             user_balance = int(db.execute("SELECT balance_cents FROM users WHERE id = ?", uuid)[0]["balance_cents"])
-            print(f"user balance: {user_balance}", f"new balance: {user_balance + (current_price * shares)}")
+            
             db.execute("UPDATE users SET balance_cents = ? WHERE id = ?", user_balance + (current_price * shares), uuid)
 
             return redirect("/")
