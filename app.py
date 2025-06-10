@@ -227,7 +227,7 @@ def quote():
     if request.method == "POST":
         symbol = request.form.get("symbol")
         if not symbol:
-            return apology("Must provide symbol", 403)
+            return apology("Must provide symbol")
         
         quote = lookup(symbol)
 
@@ -244,17 +244,26 @@ def register():
         password = request.form.get("password")
         confirmation = request.form.get("confirmation")
         if not username:
-            return apology("Must provide username", 403)
+            return apology("Must provide username")
         
         if not password:
-            return apology("Must provide password", 403)
+            return apology("Must provide password")
         
         if not confirmation:
-            return apology("Must provide password twice", 403)
+            return apology("Must provide password twice")
         
         if confirmation != password:
-            return apology("Your password and its confirmation must be the same", 403)
+            return apology("Your password and its confirmation must be the same")
         
+        # make sure the username is not in the database
+        rows = db.execute("SELECT username FROM users")
+        usernames = []
+        for row in rows:
+            usernames.append(row["username"])
+
+        if username in usernames:
+            return apology("The username is already in the database")
+
         try:
             db.execute(
                 "INSERT INTO users (username, hash) VALUES (?, ?)", username, generate_password_hash(password)
